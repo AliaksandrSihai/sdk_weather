@@ -52,7 +52,7 @@ class TestOpenWeatherMap(unittest.TestCase):
         """
         Test generating the URL for API requests.
         """
-        url = self.weather.get_url(self.city, self.api_key)
+        url = self.weather._get_url(self.city, self.api_key)
         self.assertIsNotNone(url)
         self.assertEqual(url, self.url)
 

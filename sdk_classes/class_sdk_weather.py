@@ -49,7 +49,7 @@ class OpenWeatherMap(metaclass=SingletonMeta):
 
         self.mode = mode
         if self.mode == self.__POLLING:
-            self.update_weather_thread()
+            self._update_weather_thread()
 
         logging.info(
             f"Initialized OpenWeatherMap API with key {api_key} (mode: {self.mode})"
@@ -142,7 +142,7 @@ class OpenWeatherMap(metaclass=SingletonMeta):
 
             return weather_data
 
-    def update_weather_thread(self) -> None:
+    def _update_weather_thread(self) -> None:
         """
         Continuously updates weather data for cities in the cache using concurrent threads.
 
@@ -176,7 +176,7 @@ class OpenWeatherMap(metaclass=SingletonMeta):
                 time.sleep(60 * 10)
 
     @classmethod
-    def get_url(cls, city: str, key: str) -> str:
+    def _get_url(cls, city: str, key: str) -> str:
         """
         Constructs the URL for making API requests to OpenWeather.
 
@@ -209,7 +209,7 @@ class OpenWeatherMap(metaclass=SingletonMeta):
 
         try:
 
-            url = cls.get_url(city=city, key=key)
+            url = cls._get_url(city=city, key=key)
             weather_request = requests.get(url)
             weather_request.raise_for_status()
             current_weather = weather_request.json()
