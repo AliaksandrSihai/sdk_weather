@@ -1,5 +1,6 @@
 import json
 import logging
+
 import time
 from datetime import datetime, timedelta
 import concurrent.futures
@@ -14,26 +15,26 @@ class OpenWeatherMap(metaclass=SingletonMeta):
 
     def __init__(self, api_key: str, mode: str) -> None:
         """
-            Initializes an instance of the OpenWeather API client.
+        Initializes an instance of the OpenWeather API client.
 
-            Instructions on how to obtain an API key can be found here: https://openweathermap.org/appid
+        Instructions on how to obtain an API key can be found here: https://openweathermap.org/appid
 
-            Args:
-                api_key (str): Your OpenWeather application programming interface (API) key.
-                mode (str): The mode of operation for the API client. Should be one of 'polling' or 'on_demand'.
+        Args:
+            api_key (str): Your OpenWeather application programming interface (API) key.
+            mode (str): The mode of operation for the API client. Should be one of 'polling' or 'on_demand'.
 
-            Attributes:
-                api_key (str): Your OpenWeather API key.
-                file_name (str): The filename to store cache data.
-                _cache (dict): A dictionary to store cached weather data.
-                cache_limit (int): The maximum number of cached entries.
-                mode (str): The mode of operation for the API client. Either 'polling' or 'on_demand'.
+        Attributes:
+            api_key (str): Your OpenWeather API key.
+            file_name (str): The filename to store cache data.
+            _cache (dict): A dictionary to store cached weather data.
+            cache_limit (int): The maximum number of cached entries.
+            mode (str): The mode of operation for the API client. Either 'polling' or 'on_demand'.
 
-            Raises:
-                ValueError: If the `mode` is not 'polling' or 'on_demand'.
-            """
+        Raises:
+            ValueError: If the `mode` is not 'polling' or 'on_demand'.
+        """
         self.api_key = api_key
-        self.file_name = 'weather_cache.json'
+        self.file_name = "weather_cache.json"
         self._cache = self._load_cache()
         self.cache_limit = 10
 
@@ -72,29 +73,29 @@ class OpenWeatherMap(metaclass=SingletonMeta):
         """
 
         try:
-            with open(self.file_name, 'r') as file:
+            with open(self.file_name, "r") as file:
                 cache_data = json.load(file)
                 for city, data in cache_data.items():
-                    data['time'] = datetime.fromisoformat(data['time'])
+                    data["time"] = datetime.fromisoformat(data["time"])
                 return cache_data
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             return dict()
 
     def _save_cache(self, cache_data: dict) -> None:
         """
-           Saves cache data to a file.
-           Args:
-               cache_data (dict): A dictionary containing cache data to be saved.
+        Saves cache data to a file.
+        Args:
+            cache_data (dict): A dictionary containing cache data to be saved.
 
-           Returns:
-               None
-           """
+        Returns:
+            None
+        """
 
         for city, data in cache_data.items():
-            if isinstance(data['time'], str):
-                data['time'] = datetime.fromisoformat(data['time'])
-            data['time'] = data['time'].isoformat()
-        with open(self.file_name, 'w') as file:
+            if isinstance(data["time"], str):
+                data["time"] = datetime.fromisoformat(data["time"])
+            data["time"] = data["time"].isoformat()
+        with open(self.file_name, "w") as file:
             json.dump(cache_data, file)
 
     def get_weather(self, city: str) -> dict:
@@ -115,10 +116,14 @@ class OpenWeatherMap(metaclass=SingletonMeta):
         now = datetime.now()
 
         if city in self._cache:
-            cached_time = self._cache[city]["time"] if isinstance(self._cache[city]["time"], datetime) else datetime.fromisoformat(self._cache[city]["time"])
+            cached_time = (
+                self._cache[city]["time"]
+                if isinstance(self._cache[city]["time"], datetime)
+                else datetime.fromisoformat(self._cache[city]["time"])
+            )
             if now - cached_time < timedelta(minutes=10):
                 logging.debug(f"Using cached weather data for {city}")
-                return self._cache[city]['data']
+                return self._cache[city]["data"]
 
         elif city not in self._cache:
             if len(self._cache) >= self.cache_limit:
@@ -133,13 +138,9 @@ class OpenWeatherMap(metaclass=SingletonMeta):
             weather_data = self._get_weather_on_demand(city, key=self.api_key)
             self._cache[city] = {"time": datetime.now(), "data": weather_data}
             self._save_cache(self._cache)
+            logging.info(f"Retrieved weather data for {city}")
 
-        else:
-            raise ValueError(f"Unknown mode: {self.mode}")
-
-        logging.info(f"Retrieved weather data for {city}")
-
-        return weather_data
+            return weather_data
 
     def update_weather_thread(self) -> None:
         """
@@ -158,8 +159,12 @@ class OpenWeatherMap(metaclass=SingletonMeta):
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while True:
-                futures = [executor.submit(lambda c: self._get_weather_on_demand(c, self.api_key), city) for city in
-                           self._cache.keys()]
+                futures = [
+                    executor.submit(
+                        lambda c: self._get_weather_on_demand(c, self.api_key), city
+                    )
+                    for city in self._cache.keys()
+                ]
                 for future in concurrent.futures.as_completed(futures):
 
                     result = future.result()
@@ -213,12 +218,17 @@ class OpenWeatherMap(metaclass=SingletonMeta):
             if e.response.status_code == 401:
                 logging.error("Error 401: Unauthorized API request")
             elif e.response.status_code == 404:
-                logging.error("Error 404: City not found or incorrect API request format")
+                logging.error(
+                    "Error 404: City not found or incorrect API request format"
+                )
             elif e.response.status_code == 429:
                 logging.error(
-                    "Error 429: Too many requests, consider upgrading your subscription or reducing API calls")
+                    "Error 429: Too many requests, consider upgrading your subscription or reducing API calls"
+                )
             elif e.response.status_code in [500, 502, 503, 504]:
-                logging.error("Error {e.response.status_code}: Server error, please contact support")
+                logging.error(
+                    f"Error {e.response.status_code}: Server error, please contact support"
+                )
             else:
                 logging.error(f"Unhandled HTTP error: {e}")
 
@@ -250,4 +260,3 @@ class OpenWeatherMap(metaclass=SingletonMeta):
             "name": current_weather["name"],
         }
         return weather_data
-
