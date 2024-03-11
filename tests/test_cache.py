@@ -1,6 +1,6 @@
 
 
-from config.config import API_KEY
+from conf import API_KEY
 from sdk_classes.class_sdk_weather import OpenWeatherMap
 import unittest
 
@@ -89,3 +89,21 @@ class TestSaveCache(unittest.TestCase):
             saved_cache_data = json.load(file)
         self.assertEqual(saved_cache_data, self.cache_data)
 
+    def test_cache_overflow(self):
+        cities = [
+            "Minsk",
+            "London",
+            "Tokyo",
+            "Paris",
+            "Moscow",
+            "Beijing",
+            "Berlin",
+            "Istanbul",
+            "Rio de Janeiro",
+            "Vilnius",
+            "Rome"
+        ]
+        self.assertEqual(len(self.weather_instance._cache), 0)
+        for city in cities:
+            self.weather_instance.get_weather(city)
+        self.assertEqual(len(self.weather_instance._cache), self.weather_instance.cache_limit)

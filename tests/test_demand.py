@@ -1,7 +1,8 @@
 import os
 import unittest
+from conf import API_KEY
 from sdk_classes.class_sdk_weather import OpenWeatherMap
-from config.config  import API_KEY
+from sdk_classes.metaclass import DuplicateClassError
 
 class TestOpenWeatherMap(unittest.TestCase):
     """
@@ -79,6 +80,10 @@ class TestOpenWeatherMap(unittest.TestCase):
         mode = "test_mode"
         with self.assertRaises(ValueError):
             weather = OpenWeatherMap(api_key=self.api_key, mode=mode)
+
+    def test_duplicate_copies(self):
+        with self.assertRaises(DuplicateClassError):
+            weather = OpenWeatherMap(api_key=self.api_key, mode=self.mode)
 
 
 

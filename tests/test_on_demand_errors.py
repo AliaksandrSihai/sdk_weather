@@ -1,17 +1,21 @@
+
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import requests
+
+from conf import API_KEY
 from sdk_classes.class_sdk_weather import OpenWeatherMap
-from config.config  import API_KEY
 
+class TestOpenWeatherMap(unittest.TestCase):
+    """
+      Test cases for the OpenWeatherMap class errors.
+      """
 
-class TestWeatherAPI(unittest.TestCase):
-    """Test errors status code"""
     def setUp(self):
         """
-                        Set up test data and create an instance of the OpenWeatherMap API client.
-                        """
+        Set up test data and create an instance of the OpenWeatherMap API client.
+        """
         self.api_key = API_KEY
         self.mode = "on_demand"
         self.weather = OpenWeatherMap(api_key=self.api_key, mode=self.mode)
@@ -19,68 +23,149 @@ class TestWeatherAPI(unittest.TestCase):
 
     def tearDown(self):
         """
-                      Clean up after each test by deleting the instance.
-                      """
+        Clean up after each test by deleting the instance.
+        """
         self.weather.delete_instance()
 
-    def test__get_weather_on_demand_401(self):
-        """Test handling HTTPError with status code 401."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 401
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_success(self, mock_get):
+        """
+                Test successful weather data retrieval.
 
-    def test__get_weather_on_demand_404(self):
-        """Test handling HTTPError with status code 404."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 404
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+                Mocks a successful API response and verifies that weather data is retrieved correctly.
 
-    def test__get_weather_on_demand_429(self):
-        """Test handling HTTPError with status code 429."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 429
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+                """
 
-    def test__get_weather_on_demand_500(self):
-        """Test handling HTTPError with status code 500."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 500
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+        mock_response = {
+            "weather": [{"main": "Clouds", "description": "broken clouds"}],
+            "main": {"temp": 20, "feels_like": 18},
+            "visibility": 10000,
+            "wind": {"speed": 3.5},
+            "dt": 1646890800,
+            "sys": {"sunrise": 1646851977, "sunset": 1646894477},
+            "timezone": -18000,
+            "name": "New York",
+        }
+        mock_get.return_value.json.return_value = mock_response
 
-    def test__get_weather_on_demand_502(self):
-        """Test handling HTTPError with status code 502."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 502
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+        weather_data = self.weather._get_weather_on_demand(self.city, self.api_key)
 
-    def test__get_weather_on_demand_503(self):
-        """Test handling HTTPError with status code 503."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 503
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+        self.assertIsNotNone(weather_data)
+        self.assertEqual(weather_data['weather']['main'], 'Clouds')
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_401_handling(self, mock_get):
+        """
+                Test handling of HTTP 401 error.
 
-    def test__get_weather_on_demand_504(self):
-        """Test handling HTTPError with status code 504."""
-        with self.assertRaises(requests.exceptions.HTTPError):
-            mock_response = MagicMock()
-            mock_response.status_code = 504
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.HTTPError(response=mock_response))
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+                Mocks an HTTP 401 error response and verifies that it is handled correctly.
 
-    def test__get_weather_on_demand_RequestException(self):
-        """Test handling RequestException."""
-        with self.assertRaises(requests.exceptions.RequestException):
-            self.weather._get_weather_on_demand = MagicMock(side_effect=requests.exceptions.RequestException)
-            self.weather._get_weather_on_demand(city=self.city, key=self.api_key)
+                """
+        key = 'test-key'
+        mock_response = requests.Response()
+        mock_response.status_code = 401
+        mock_get.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+
+        weather_data = self.weather._get_weather_on_demand(self.city, key)
+
+
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_404_handling(self, mock_get):
+        """
+                Test handling of HTTP 404 error.
+
+                Mocks an HTTP 404 error response and verifies that it is handled correctly.
+
+                """
+
+        city = "Nonexistent City"
+        mock_response = requests.Response()
+        mock_response.status_code = 404
+        mock_get.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+
+        weather_data = self.weather._get_weather_on_demand(city, self.api_key)
+
+
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_429_handling(self, mock_get):
+        """
+               Test handling of HTTP 429 error.
+
+               Mocks an HTTP 429 error response and verifies that it is handled correctly.
+
+               """
+        mock_response = requests.Response()
+        mock_response.status_code = 429
+        mock_get.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+
+        weather_data = self.weather._get_weather_on_demand(self.city, self.api_key)
+
+
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_500_handling(self, mock_get):
+        """
+               Test handling of HTTP 500 error.
+
+               Mocks an HTTP 500 error response and verifies that it is handled correctly.
+
+               """
+        mock_response = requests.Response()
+        mock_response.status_code = 500
+        mock_get.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+        # Act
+        weather_data = self.weather._get_weather_on_demand(self.city, self.api_key)
+
+        # Assert
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_410_handling(self, mock_get):
+        """
+               Test handling of  any HTTP error.
+
+               Mocks an HTTP 410 error response and verifies that it is handled correctly.
+
+               """
+        mock_response = requests.Response()
+        mock_response.status_code = 410
+        mock_get.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+        # Act
+        weather_data = self.weather._get_weather_on_demand(self.city, self.api_key)
+
+        # Assert
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+    @patch('sdk_classes.class_sdk_weather.requests.get')
+    def test_get_weather_on_demand_error_handling(self, mock_get):
+        """
+               Test handling of general request error.
+
+               Mocks a general request error and verifies that it is handled correctly.
+
+               """
+        mock_response = requests.Response()
+        mock_get.side_effect = requests.exceptions.RequestException(response=mock_response)
+
+
+        weather_data = self.weather._get_weather_on_demand(self.city, self.api_key)
+
+        self.assertIsNone(weather_data)
+        self.assertTrue(mock_get.called)
+
+
+
